@@ -14,14 +14,18 @@ import numpy as np
 import subprocess
 import time
 import shutil
+import datetime
 
+
+start_time = datetime.datetime.now()
 current_path = os.getcwd()
 
 if os.path.isfile("all_jobs.txt"):
     os.remove("all_jobs.txt")
 ###################################### Parse files and parameters ############################################    
 parser= argparse.ArgumentParser()
-
+parser.add_argument("-crank", "--crank-file-path", help="input the path for the crank file", type = str)
+parser.add_argument("-shelx", "--shelx-file-path", help="input the path for the shelx file", type = str)
 parser.add_argument("-rfl","--reflection-mtz", help="input the mtz file of reflection", type = str)
 parser.add_argument("-hkl","--hkl-file", help="input shelx readeable file", type = str)
 parser.add_argument("-seq","--sequence-file",help = "input the sequence file", type = str)
@@ -37,15 +41,35 @@ parser.add_argument("-lresl","--low-resolution-cut",default = '999', help = "inp
 parser.add_argument("-P", "--path", help = "input the orginal path", type = str)
 args = parser.parse_args()
 
+if args.shelx_file_path:
+    shelx = args.shelx_file_path
+else:
+    print("Please input the path for shelx python file")
+    sys.exit()
+
+if args.crank_file_path:
+    crank = args.crank_file_path
+else:
+    print("Please input the path for the crank2 python file")
+    sys.exit()
+
 if args.reflection_mtz:
     reflectionFile = args.reflection_mtz
-    job_name = args.reflection_mtz.replace('.mtz','')
+    print('Here is the reflection file')
+    print(reflectionFile)
+    job_file = reflectionFile.split('/')[-1]
+    print('Here is the job file')
+    print(job_file)
+    #job_name = args.reflection_mtz.replace('.mtz','')
+    job_name = job_file.replace('.mtz','')
 else:
     print('Please input the mtz file for SHELXC/D')
     sys.exit()
 
 if args.sequence_file:
     sequenceFile = args.sequence_file
+    print('Here is the seq file')
+    print(sequenceFile)
 else:
     print('Please input sequence for crank2')
     sys.exit()
@@ -66,12 +90,17 @@ if args.atom_type:
     
 if args.esel:
     eSel = args.esel
-    
-    
-shelx_CD = 'python2.7 SHELX_script.py  -rfl '+reflectionFile+' -MIND1 '+args.mind_atom+' -MIND2 '+args.mind_symm+' -resl '+str(resolution)+' -lresl '+args.low_resolution_cut+' -TEST 0 99 -ESEL '+eSel+' -SFAC '+atomType+' -NTRY 5000 -FIND '+str(atom_find)+' -DSUL '+str(dsul)+' -thre '+args.threshold
-
+print('Here is the reflection file again')    
+print(reflectionFile)    
+#shelx_CD = 'python SHELX_script.py  -rfl '+reflectionFile+' -MIND1 '+args.mind_atom+' -MIND2 '+args.mind_symm+' -resl '+str(resolution)+' -lresl '+args.low_resolution_cut+' -TEST 0 99 -ESEL '+eSel+' -SFAC '+atomType+' -NTRY 5000 -FIND '+str(atom_find)+' -DSUL '+str(dsul)+' -thre '+args.threshold
+#shelx_CD = 'python '+shelx+ ' -rfl '+reflectionFile+' -MIND1 '+args.mind_atom+' -MIND2 '+args.mind_symm+' -resl '+str(resolution)+' -lresl '+args.low_resolution_cut+' -TEST 0 99 -ESEL '+eSel+' -SFAC '+atomType+' -NTRY 5000 -FIND '+str(atom_find)+' -DSUL '+str(dsul)+' -thre '+args.threshold
+shelx_CD = 'python '+shelx+ ' -rfl '+reflectionFile+' -MIND1 '+args.mind_atom+' -MIND2 '+args.mind_symm+' -resl '+str(resolution)+' -lresl '+args.low_resolution_cut+' -TEST 0 99 -ESEL '+eSel+' -SFAC '+atomType+' -NTRY 5000 -FIND '+str(atom_find)+' -DSUL '+str(dsul)+' -thre '+args.threshold
+print(shelx_CD)
+f = open('shelxout.log','w')
 os.system(shelx_CD)
+#process = subprocess.Popen(shelx_CD, stdout = f, stderr=f, shell=True)
 
+#f = open('shelxout.log','w')
 CFOM_list = []
 with open(job_name+'_fa.res','r') as f:
     for line in f:
@@ -89,13 +118,22 @@ else:
     sys.exit()
 
 # run crank2
-crank2_cl = 'python2.7 crank2_script.py -rfl '+reflectionFile+' -pdb '+new_pdb+' -seq '+sequenceFile+' -atype '+atomType+' -P '+args.path
-#os.system(crank2_cl)
-process = subprocess.Popen(crank2_cl, stdout = subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-out,err = process.communicate()
-print(out)
-print(err)
+print('I m here')
+#crank2_cl = 'python crank2_script.py -rfl '+reflectionFile+' -pdb '+new_pdb+' -seq '+sequenceFile+' -atype '+atomType+' -P '+args.path
+#crank2_cl = 'python '+crank+' -rfl '+reflectionFile+' -pdb '+new_pdb+' -seq '+sequenceFile+' -atype '+atomType+' -P '+args.path
+crank2_cl = 'python '+crank+' -rfl '+reflectionFile+' -pdb '+new_pdb+' -seq '+sequenceFile+' -atype '+atomType+' -P '+args.path
+print(crank2_cl)
+os.system(crank2_cl )
+f = open('crank_output.log','w')
+#process = subprocess.Popen(crank2_cl, stdout = f, stderr=f, shell=True)
+#out,err = process.communicate()
+#print(out)
+#print(err)
 # check whether crank2 works
+end_time = datetime.datetime.now()
+delta = end_time -  start_time
+with open('times.log', 'w') as f1:
+    f1.write('Total time for operation:' + str(float(delta.seconds) + float(delta.microseconds) / 1000000)+'\n')
 os.chdir('crank2')
 content = open('crank.loggraph','r').read()
 for line  in content.split('\n'):
@@ -114,7 +152,7 @@ for line  in content.split('\n'):
             else:
                 print("Experimental reflection file has not been genereted")
                 sys.exit()
-
+print('I m exiting')
 
 ########################################## retrieve results ##############################################
 # for i in os.listdir(os.getcwd()):

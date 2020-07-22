@@ -31,6 +31,10 @@ args = parser.parse_args()
 
 if args.reflection_mtz:
     reflection_file = args.reflection_mtz
+    #reflection_file = args.reflection_mtz.split('/')[-1]
+    print('Reflection file for Shelx') 
+    print(reflection_file)
+    #reflection_file = args.reflection_mtz
 
 min_dist_atom = '-3.5'
 
@@ -40,6 +44,7 @@ NOATOM = 4
 NOTRY = 1000
 
 
+os.environ["CCP4_SCR"] = '/global/project/projectdirs/m3506/sfxPhasing/tmp/annagian'
 if args.number_of_try:
     NOTRY = args.number_of_try
 
@@ -94,7 +99,7 @@ for key in my_mtz:
 #############################################################################################################
 
 #################################### Convert mtz to shelxreadable ################################
-
+print(os.getcwd())
 if os.path.isfile("shelxc.inp"):
     os.remove("shelxc.inp")
 if os.path.isfile("mtz2shelx.sh"):
@@ -116,7 +121,7 @@ for i in molecule_inp:
     my_string = my_string.replace('"','')
     print(my_string,file=open("shelxc.inp", "a"))
 
-title_name = reflection_file.replace('.mtz','')
+title_name = reflection_file.split('/')[-1].replace('.mtz','')
 
 
 os.system('shelxc '+title_name+' < shelxc.inp > shelxc.log')
@@ -190,8 +195,11 @@ ins_file = title_name+'_fa.ins'
 hkl_file = title_name+'_fa.hkl'
 
 print("Now start the process of SHELXD")
-os.system('shelxd ' + title_name + '_fa')
-
+#os.system('shelxd ' + title_name + '_fa')
+process = subprocess.Popen('shelxd ' + title_name + '_fa',stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell = True)
+out,err  = process.communicate()
+print(out)
+print(err)
 #################################################### modify pdb file ##########################################
 if title_name+'_fa.pdb' in os.listdir(os.getcwd()):
     pdbFileIn = title_name+'_fa.pdb'

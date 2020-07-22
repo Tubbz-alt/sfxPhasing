@@ -7,8 +7,10 @@ from __future__ import print_function
 import sys
 import subprocess
 import os
+import datetime
 import argparse
 import re
+import shlex
 import json
 import ast
 import numpy as np
@@ -35,11 +37,15 @@ parser.add_argument("-ATOM_R","--atom-range", nargs = '+', help='input the range
 parser.add_argument("-AutoBuild","--AutoBuild-polish", help = 'type N if you do not want it and type Y if you like it',type = str)
 
 args = parser.parse_args()
-
+#pr = cProfile.Profile()
+#pr.enable()
 #parse reflection file
 if args.reflection_mtz:
-    reflectionFile = args.reflection_mtz
+    #reflectionFile = args.reflection_mtz
+    #reflectionFile = os.path.abspath(args.reflection_mtz)
     job_name = args.reflection_mtz.replace('.mtz','')
+    reflectionFile = os.path.abspath(args.reflection_mtz)
+    print(reflectionFile)
 else:
     print('Please input the mtz file')
     sys.exit()
@@ -120,7 +126,7 @@ if single_S_or_SE_number == 0:
         #sys.exit()
 
 else :
-    max_DSUL = double_sulfur_number/2
+    max_DSUL = double_sulfur_number//2 #changing for python3
     max_S = single_S_or_SE_number+double_sulfur_number
     max_SE = single_S_or_SE_number
 
@@ -137,14 +143,14 @@ split_out=out.splitlines()
 for line in split_out:
     if b'Resolution range' in line:
         print(line)
-        resolution = round(float(line.split(' ')[-1]),1)
+        resolution = round(float(line.split(b' ')[-1]),1)    #changing for python3
         
 
 DSUL_range = range(1,max_DSUL+1)
 resolution_range = np.arange(resolution, resolution+1.0, 0.1) 
 
 if atomType == 'S':
-    atom_find = range(max_S/2, max_S+1)
+    atom_find = range(max_S//2, max_S+1) #changing for python3
 else:
     if single_S_or_SE_number == 0:
         atom_find = range(SE_num-1, SE_num+2)
@@ -201,6 +207,9 @@ print ("Atom number search range:"+str(atom_find))
 
 directory_list = []
 command_list = []
+se_SAD = os.path.abspath(os.getcwd()+'/Se_SAD_automation.py')
+crank = os.path.abspath(os.getcwd()+'/crank2_script.py')
+shelx = os.path.abspath(os.getcwd()+'/SHELX_script.py')
 #creat a list of directory and corresponding command
 if max_DSUL > 0 and atomType == 'S':
     for dsul in DSUL_range:
@@ -209,8 +218,14 @@ if max_DSUL > 0 and atomType == 'S':
                 for number in atom_find:
                     directory = 'DSUL'+str(dsul)+'/threshold'+str(thre)+'/resolution'+str(resolution)+'/atom_number'+str(number)
                     directory_list.append(directory)
-
-                    automation_cl = 'python Se_SAD_automation.py -rfl '+reflectionFile+' -seq '+sequenceFile+' -resl '+str(resolution)+' -FIND '+str(number)+' -ESEL 1.3 -thre '+str(thre)+' -DSUL '+str(dsul)+' -SFAC '+atomType+' -MIND1 '+mind_atom+' -MIND2 '+mind_symm+' -lresl '+low_resolution_cut+' -P '+original_path
+                    #se_SAD = os.path.abspath(os.getcwd()+'/Se_SAD_automation.py')
+                    #crank = os.path.abspath(os.getcwd()+'/crank2_script.py')
+                    #shelx = os.path.abspath(os.getcwd()+'/SHELX_script.py')
+                    #print(se_SAD)
+                    #print(crank)
+                    automation_cl = 'python '+se_SAD+' -shelx '+shelx+ ' -crank '+crank+' -rfl '+reflectionFile+' -seq '+sequenceFile+' -resl '+str(resolution)+' -FIND '+str(number)+' -ESEL 1.5 -thre '+str(thre)+' -SFAC '+atomType+' -MIND1 '+mind_atom+' -MIND2 '+mind_symm+' -P '+original_path
+                    #automation_cl = 'python ' +se_SAD+ '-crank '+crank+' -rfl '+reflectionFile+' -seq '+sequenceFile+' -resl '+str(resolution)+' -FIND '+str(number)+' -ESEL 1.3 -thre '+str(thre)+' -DSUL '+str(dsul)+' -SFAC '+atomType+' -MIND1 '+mind_atom+' -MIND2 '+mind_symm+' -lresl '+low_resolution_cut+' -P '+original_path
+                    #automation_cl = 'strace -tt -f -etrace=file,read,write,close,lseek,ioctl -o out.log python Se_SAD_automation.py -rfl '+reflectionFile+' -seq '+sequenceFile+' -resl '+str(resolution)+' -FIND '+str(number)+' -ESEL 1.3 -thre '+str(thre)+' -DSUL '+str(dsul)+' -SFAC '+atomType+' -MIND1 '+mind_atom+' -MIND2 '+mind_symm+' -lresl '+low_resolution_cut+' -P '+original_path
                     command_list.append(automation_cl)
 
 
@@ -222,9 +237,11 @@ elif max_DSUL == 0 or atomType != 'S':
             for number in atom_find:
                 directory = 'threshold'+str(thre)+'/resolution'+str(resolution)+'/atom_number'+str(number)
                 directory_list.append(directory)
-
-
-                automation_cl = 'python Se_SAD_automation.py -rfl '+reflectionFile+' -seq '+sequenceFile+' -resl '+str(resolution)+' -FIND '+str(number)+' -ESEL 1.5 -thre '+str(thre)+' -SFAC '+atomType+' -MIND1 '+mind_atom+' -MIND2 '+mind_symm+' -P '+original_path
+                #automation_cl = 'python Se_SAD_automation.py -rfl '+reflectionFile+' -seq '+sequenceFile+' -resl '+str(resolution)+' -FIND '+str(number)+' -ESEL 1.5 -thre '+str(thre)+' -SFAC '+atomType+' -MIND1 '+mind_atom+' -MIND2 '+mind_symm+' -P '+original_path
+                automation_cl = 'python '+se_SAD+' -shelx '+shelx+ ' -crank '+crank+' -rfl '+reflectionFile+' -seq '+sequenceFile+' -resl '+str(resolution)+' -FIND '+str(number)+' -ESEL 1.5 -thre '+str(thre)+' -SFAC '+atomType+' -MIND1 '+mind_atom+' -MIND2 '+mind_symm+' -P '+original_path
+                #print(automation_cl)
+                #print(sequenceFile)
+                #automation_cl = 'strace -tt -f -etrace=file,read,write,close,lseek,ioctl -o out.log  python Se_SAD_automation.py -rfl '+reflectionFile+' -seq '+sequenceFile+' -resl '+str(resolution)+' -FIND '+str(number)+' -ESEL 1.5 -thre '+str(thre)+' -SFAC '+atomType+' -MIND1 '+mind_atom+' -MIND2 '+mind_symm+' -P '+original_path
                 command_list.append(automation_cl)
 
 # Shuffle the jobs
@@ -235,19 +252,38 @@ random.shuffle(matching)
 directory_list,command_list = zip(*matching)
 
 # run jobs
-for i in range(len(directory_list)):
+start_time_cp = datetime.datetime.now()
+for i in range(5):
+#for i in range(len(directory_list)):
+    print('Hello')
+    print(len(directory_list))
+    start_time = datetime.datetime.now()
     os.system('mkdir -p '+directory_list[i])
-    os.system('cp Se_SAD_automation.py SHELX_script.py crank2_script.py autobuild.py '+sequenceFile+' '+reflectionFile+' '+directory_list[i])  
+    #os.system('cp Se_SAD_automation.py SHELX_script.py crank2_script.py autobuild.py '+sequenceFile+' '+reflectionFile+' '+directory_list[i])  
+    #os.system('cp Se_SAD_automation.py SHELX_script.py crank2_script.py autobuild.py '+directory_list[i])  
+    end_time = datetime.datetime.now()
+    delta = end_time - start_time
+    print('Time spent for copying before each job')
+    print(str(float(delta.seconds) + float(delta.microseconds) / 1000000))
     os.chdir("./"+directory_list[i])
     print(os.getcwd())
     #os.system('srun -A m3506 -C haswell -q '+computeQueue+' --cores-per-socket '+coreNumber+' -o %J.log '+command_list[i])
-    process = subprocess.Popen('srun -A m3506 -C haswell -q '+computeQueue+' --cores-per-socket '+coreNumber+' -o %J.log '+command_list[i], stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell = True)
-    out,err = process.communicate()
-    print(out)
-    print(err)
+    print(command_list[i])
+    process = subprocess.Popen('srun -C haswell -q '+computeQueue+' --nodes 1'+' -o %J.log '+command_list[i], stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell = True)
+    f = open('output.log', 'w') 
+    #process = subprocess.Popen(command_list[i], stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell= True)
+    #process = subprocess.Popen('srun --cores-per-socket '+coreNumber+' -o %J.log '+command_list[i], stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell = True)
+    print('Job submitted')
+    #out,err = process.communicate()
+    #print(out)
+    #process
+    #print(err)
     os.chdir(original_path)    
-    
-    
+end_time_cp = datetime.datetime.now()
+delta = end_time_cp - start_time_cp
+with open('times500_2_jobs_optimization.log', 'w') as f:
+    f.write('Total time for copy operation:' + str(float(delta.seconds) + float(delta.microseconds) / 1000000)+'\n')
+#exit(0)    
 #################### Wait for to start Autobuild to polish the model ###########################
 ##helper method
 
@@ -318,8 +354,8 @@ def case_select ():
     print ("It has the score R:"+select_case.split('R:')[-1])
     return select_case.split('R:')[0]
 
-
-Total_jobs = len(directory_list)
+Total_jobs = 3
+#Total_jobs = len(directory_list)
 Half_total_jobs = Total_jobs // 2
 percent97_total_jobs = Total_jobs * 97 //100
 half_finished = False
@@ -368,9 +404,11 @@ while percent97_finished == False:
                 percent97_finished = True
 
 
-
-
-
+pr.disable()
+with open( 'cpu_out.txt', 'w') as output_file:
+    sys.stdout = output_file
+    pr.print_stats( sort='time' )
+    sys.stdout = sys.__stdout__
 
 
 
